@@ -1,7 +1,7 @@
 [versions]
 slf4j = { strictly = "[2.0.7, 2.1[", prefer = "2.0.7" }
 slf4j-format = "0.5.1"
-groovy = "4.0.23"
+groovy = "4.0.25"
 junit = "4.13.2"
 commons_lang3 = "3.14.0"
 commons_io = "2.16.1"
@@ -37,7 +37,7 @@ htmlparser = "1.6-20230203"
 gnudiff = "1.15"
 desktopsupport = "0.6.0"
 protocolhandler = "0.1.4"
-pdfbox = "3.0.3"
+pdfbox = "3.0.4"
 maligna = "3.0.1"
 trie4j = "0.9.10_1"
 dsl4j = "1.0.0"
@@ -186,7 +186,7 @@ dictionary = ["trie4j", "dsl4j", "stardict4j", "jsoup"]
 xmlunit = ["xmlunit-core", "xmlunit-assertj", "assertj"]
 
 [plugins]
-spotbugs = {id = "com.github.spotbugs", version = "6.1.3"}
+spotbugs = {id = "com.github.spotbugs", version = "6.1.5"}
 spotless = {id = "com.diffplug.spotless", version = "7.0.2"}
 launch4j = {id = "edu.sc.seis.launch4j", version = "3.0.6"}
 versions = {id = "com.github.ben-manes.versions", version = "0.52.0"}
