@@ -32,6 +32,7 @@
 package org.omegat.util;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -70,7 +71,7 @@ public final class StringUtil {
     /**
      * Check if string is empty, i.e. null or length==0
      */
-    public static boolean isEmpty(final String str) {
+    public static boolean isEmpty(final @Nullable String str) {
         return str == null || str.isEmpty();
     }
 
@@ -766,8 +767,8 @@ public final class StringUtil {
     private static void processAsciiAndSpace(int ch, StringBuilder sb, int i) {
         if ((ch >= 0xFF01) && (ch <= 0xFF5E)) {
             sb.setCharAt(i, (char) (ch - 0xFEE0));
-        } else if (ch == 0x3000) {
-            sb.setCharAt(i, ' ');
+        } else if (ch == 0x00A0 ||  ch == 0x2007 || ch == 0x2008 || ch == 0x2009 || ch == 0x202F || ch == 0x3000) {
+                sb.setCharAt(i, ' ');
         }
     }
 
