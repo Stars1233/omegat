@@ -43,6 +43,7 @@ import javax.xml.stream.XMLResolver;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.Characters;
+import javax.xml.stream.events.DTD;
 import javax.xml.stream.events.EndElement;
 import javax.xml.stream.events.StartElement;
 import javax.xml.stream.events.XMLEvent;
@@ -144,6 +145,7 @@ public class TMXReader2 {
         inputFactory.setXMLResolver(TMX_DTD_RESOLVER_2);
     }
 
+    @SuppressWarnings("unused")
     public boolean isParagraphSegtype() {
         return isParagraphSegtype;
     }
@@ -179,7 +181,13 @@ public class TMXReader2 {
             xml = inputFactory.createXMLEventReader(in);
             while (xml.hasNext()) {
                 XMLEvent e = xml.nextEvent();
-                if (e.getEventType() == XMLEvent.START_ELEMENT) {
+                switch (e.getEventType()) {
+                case XMLEvent.DTD:
+                    DTD ed = (DTD) e;
+                    callback.setOldOmegaTFormat(ed.getDocumentTypeDeclaration().contains("11")
+                            || ed.getDocumentTypeDeclaration().contains("1.1"));
+                    break;
+                case XMLEvent.START_ELEMENT:
                     StartElement eStart = (StartElement) e;
                     if ("tu".equals(eStart.getName().getLocalPart())) {
                         parseTu(eStart);
@@ -775,6 +783,13 @@ public class TMXReader2 {
          * @return true if TU contains required source and target info
          */
         boolean onEntry(ParsedTu tu, ParsedTuv tuvSource, ParsedTuv tuvTarget, boolean isParagraphSegtype);
+
+        /**
+         * Sent when receiving DTD
+         **/
+        default void setOldOmegaTFormat(boolean isOmegaTFormat) {
+
+        }
     }
 
     public static class ParsedTu {

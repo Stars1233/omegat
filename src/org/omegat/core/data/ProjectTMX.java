@@ -89,6 +89,9 @@ public class ProjectTMX {
 
     final CheckOrphanedCallback checkOrphanedCallback;
 
+    // Variable to be set during loading
+    boolean isOldOmegaTFormat = false;
+
     public ProjectTMX(Language sourceLanguage, Language targetLanguage, boolean isSentenceSegmentingEnabled,
             File file, CheckOrphanedCallback callback) {
         this(sourceLanguage, targetLanguage, isSentenceSegmentingEnabled, file, callback,
@@ -127,9 +130,11 @@ public class ProjectTMX {
             return;
         }
         TMXReader2.Builder tmxReaderBuilder = new TMXReader2.Builder();
-        TMXReader2.LoadCallback cb = new Loader(sourceLanguage, targetLanguage, segmenter, isSentenceSegmentingEnabled);
-        TMXReader2 reader = tmxReaderBuilder.setNeedValidate(false).setSegmentingEnabled(isSentenceSegmentingEnabled)
-                .setExtTmxLevel2(true).setUseSlash(Preferences.isPreference(Preferences.EXT_TMX_USE_SLASH)).build();
+        TMXReader2.LoadCallback cb = new Loader(sourceLanguage, targetLanguage, segmenter,
+                isSentenceSegmentingEnabled);
+        TMXReader2 reader = tmxReaderBuilder.setNeedValidate(false)
+                .setSegmentingEnabled(isSentenceSegmentingEnabled).setExtTmxLevel2(true)
+                .setUseSlash(Preferences.isPreference(Preferences.EXT_TMX_USE_SLASH)).build();
         reader.readTMX(file, sourceLanguage, targetLanguage, cb);
     }
 
@@ -140,11 +145,17 @@ public class ProjectTMX {
         return defaults.isEmpty() && alternatives.isEmpty();
     }
 
-    /**
-     * It saves current translation into file.
-     */
     public void save(ProjectProperties props, String translationFile, boolean translationUpdatedByUser)
             throws Exception {
+        boolean isTeam = Core.getProject().getProjectProperties().isTeamProject();
+        save(props, translationFile, translationUpdatedByUser, isTeam);
+    }
+
+    /**
+     * It saves a current translation into the TMX file.
+     */
+    public void save(ProjectProperties props, String translationFile, boolean translationUpdatedByUser,
+            boolean isTeamProject) throws Exception {
         if (!translationUpdatedByUser) {
             if (new File(translationFile).exists()) {
                 // if there is no file - need to save it
@@ -156,7 +167,8 @@ public class ProjectTMX {
         File newFile = new File(translationFile + OConsts.NEWFILE_EXTENSION);
 
         // Save data into '*.new' file
-        exportTMX(props, newFile, false, false, true);
+        // If in team project, keep same format as last saved file
+        exportTMX(props, newFile, false, !isTeamProject || !isOldOmegaTFormat, true);
 
         File backup = new File(translationFile + OConsts.BACKUP_EXTENSION);
         File orig = new File(translationFile);
@@ -178,25 +190,25 @@ public class ProjectTMX {
     }
 
     /**
-     * Exports the TMX (Translation Memory Exchange) data from the project
-     * to a specified file.
+     * Exports the TMX (Translation Memory Exchange) data from the project to a
+     * specified file.
      *
      * @param props
-     *              The project properties containing source and target language
-     *              information and other project-level settings.
+     *            The project properties containing source and target language
+     *            information and other project-level settings.
      * @param outFile
-     *              The output file to which the TMX data will be exported.
+     *            The output file to which the TMX data will be exported.
      * @param forceValidTMX
-     *              A boolean indicating whether to enforce the generation of a
-     *              valid TMX file.
+     *            A boolean indicating whether to enforce the generation of a
+     *            valid TMX file.
      * @param levelTwo
-     *              A boolean indicating whether to enable creation of TMX Level-2
-     *              format.
+     *            A boolean indicating whether to enable creation of TMX Level-2
+     *            format.
      * @param useOrphaned
-     *              A boolean indicating whether orphaned entries (entries not
-     *              currently in use) should be included in the export.
+     *            A boolean indicating whether orphaned entries (entries not
+     *            currently in use) should be included in the export.
      * @throws Exception
-     *              If any error occurs during the export process.
+     *             If any error occurs during the export process.
      */
     public void exportTMX(ProjectProperties props, File outFile, final boolean forceValidTMX,
             final boolean levelTwo, final boolean useOrphaned) throws Exception {
@@ -353,6 +365,10 @@ public class ProjectTMX {
             this.sentenceSegmentingEnabled = sentenceSegmentingEnabled;
         }
 
+        public void setOldOmegaTFormat(boolean isOmegaTFormat) {
+            ProjectTMX.this.isOldOmegaTFormat = isOmegaTFormat;
+        }
+
         public boolean onEntry(TMXReader2.ParsedTu tu, TMXReader2.ParsedTuv tuvSource,
                 TMXReader2.ParsedTuv tuvTarget, boolean isParagraphSegtype) {
             if (tuvSource == null) {
@@ -472,8 +488,9 @@ public class ProjectTMX {
     }
 
     /**
-     * This interface is used as a callback mechanism to check if specific entries or source texts
-     * exist in a project. It is typically utilized to manage data consistency or handle orphaned entries.
+     * This interface is used as a callback mechanism to check if specific
+     * entries or source texts exist in a project. It is typically utilized to
+     * manage data consistency or handle orphaned entries.
      */
     public interface CheckOrphanedCallback {
         boolean existEntryInProject(EntryKey key);
@@ -484,15 +501,15 @@ public class ProjectTMX {
     }
 
     /**
-     * Replaces the content of the current {@code ProjectTMX} instance with
-     * the content of the provided {@code ProjectTMX} instance.
+     * Replaces the content of the current {@code ProjectTMX} instance with the
+     * content of the provided {@code ProjectTMX} instance.
      * <p>
-     * This includes replacing the defaults and alternatives mappings with
-     * those from the given instance.
+     * This includes replacing the defaults and alternatives mappings with those
+     * from the given instance.
      *
      * @param tmx
-     *         the {@code ProjectTMX} instance whose content will replace the
-     *         current content
+     *            the {@code ProjectTMX} instance whose content will replace the
+     *            current content
      */
     public synchronized void replaceContent(ProjectTMX tmx) {
         defaults.clear();
