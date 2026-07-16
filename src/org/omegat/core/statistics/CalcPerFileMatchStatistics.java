@@ -32,6 +32,8 @@ package org.omegat.core.statistics;
 import org.omegat.core.data.IProject;
 import org.omegat.core.data.SourceTextEntry;
 import org.omegat.core.statistics.FindMatches.StoppedException;
+import org.omegat.core.statistics.dso.MatchStatCounts;
+import org.omegat.core.statistics.dso.StatCount;
 import org.omegat.core.threads.CancellationToken;
 import org.omegat.core.threads.Completion;
 import org.omegat.core.threads.LongProcessInterruptedException;
@@ -82,7 +84,8 @@ public class CalcPerFileMatchStatistics extends CalcMatchStatistics implements I
 
             MatchStatCounts perFileCounts = forFile(fi);
             cancellationToken.throwIfCancelled();
-            String title = StringUtil.format(OStrings.getString("CT_STATSMATCH_File"), fileNumber, fi.filePath);
+            String title = StringUtil.format(OStrings.getString("CT_STATSMATCH_File"), fileNumber,
+                    fi.filePath);
             showTextTable(title, perFileCounts, i -> true, true);
         }
 

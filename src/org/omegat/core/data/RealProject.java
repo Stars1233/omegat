@@ -66,6 +66,7 @@ import javax.xml.stream.XMLStreamException;
 
 import org.jetbrains.annotations.VisibleForTesting;
 import org.jspecify.annotations.Nullable;
+import org.omegat.core.statistics.StatOutputFormat;
 import org.xml.sax.SAXParseException;
 
 import org.omegat.core.Core;
@@ -76,9 +77,9 @@ import org.omegat.core.events.IProjectEventListener;
 import org.omegat.core.segmentation.SRX;
 import org.omegat.core.segmentation.SRXManager;
 import org.omegat.core.segmentation.Segmenter;
+import org.omegat.core.statistics.dso.StatsResult;
 import org.omegat.core.statistics.Statistics;
 import org.omegat.core.statistics.StatisticsInfo;
-import org.omegat.core.statistics.StatsResult;
 import org.omegat.core.team2.IRemoteRepository2;
 import org.omegat.core.team2.PreparedFileInfo;
 import org.omegat.core.team2.RebaseAndCommit;
@@ -734,9 +735,12 @@ public class RealProject implements IProject {
         // sent at same moment
         StatsResult stat = Statistics.buildProjectStats(this);
         stat.updateStatisticsInfo(hotStat);
-        String fn = config.getProjectInternal() + OConsts.STATS_FILENAME;
-        Statistics.writeStat(fn, stat.getTextData());
-        Statistics.writeStat(fn.replace(".txt", ".json"), stat.getJsonData());
+        for (StatOutputFormat format : List.of(StatOutputFormat.TEXT, StatOutputFormat.JSON)) {
+            File textStatFile = new File(config.getProjectInternal(),
+                    OConsts.STATS_FILENAME + format.getFileExtension());
+            Statistics.writeStat(textStatFile, stat, format);
+        }
+
         // commit translations and statistics
         try {
             Core.getMainWindow().showStatusMessageRB("TF_COMMIT_TARGET_START");
@@ -745,6 +749,7 @@ public class RealProject implements IProject {
             remoteRepositoryProvider.commitFiles(config.getTargetDir().getUnderRoot(), "Project translation");
             // Convert stats file name to relative
             ProjectProperties.ProjectPath path = config.new ProjectPath(true);
+            String fn = config.getProjectInternal() + OConsts.STATS_FILENAME;
             path.setRelativeOrAbsolute(fn);
             fn = path.getUnderRoot();
             remoteRepositoryProvider.copyFilesFromProjectToRepos(fn, null);
@@ -1030,13 +1035,14 @@ public class RealProject implements IProject {
         String tmxPath = config.getProjectInternalRelative() + OConsts.STATUS_EXTENSION;
         if (remoteRepositoryProvider.isManaged() && remoteRepositoryProvider.isUnderMapping(tmxPath)) {
             synchronized (projectTMX) {
-                tmxPrepared = RebaseAndCommit.rebaseAndCommit(tmxPrepared, remoteRepositoryProvider, config.getProjectRootDir(),
-                        tmxPath, getTMXRebaseOperation());
+                tmxPrepared = RebaseAndCommit.rebaseAndCommit(tmxPrepared, remoteRepositoryProvider,
+                        config.getProjectRootDir(), tmxPath, getTMXRebaseOperation());
             }
         }
 
         final String glossaryPath = config.getWritableGlossaryFile().getUnderRoot();
-        if (processGlossary && glossaryPath != null && remoteRepositoryProvider.isUnderMapping(glossaryPath)) {
+        if (processGlossary && glossaryPath != null
+                && remoteRepositoryProvider.isUnderMapping(glossaryPath)) {
             synchronized (projectTMX) {
                 glossaryPrepared = RebaseAndCommit.rebaseAndCommit(glossaryPrepared, remoteRepositoryProvider,
                         config.getProjectRootDir(), glossaryPath, getGlossaryRebaseOperation());
@@ -1056,7 +1062,8 @@ public class RealProject implements IProject {
     }
 
     private boolean canRebaseAndCommit() {
-        return remoteRepositoryProvider.isManaged() && preparedStatus == PreparedStatus.PREPARED && isOnlineMode;
+        return remoteRepositoryProvider.isManaged() && preparedStatus == PreparedStatus.PREPARED
+                && isOnlineMode;
     }
 
     @Deprecated(since = "6.1.0", forRemoval = true)

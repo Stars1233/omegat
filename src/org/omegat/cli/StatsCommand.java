@@ -28,9 +28,10 @@ package org.omegat.cli;
 import org.jspecify.annotations.Nullable;
 import org.omegat.core.Core;
 import org.omegat.core.data.RealProject;
+import org.omegat.core.statistics.dso.StatsResult;
 import org.omegat.core.statistics.StatOutputFormat;
 import org.omegat.core.statistics.Statistics;
-import org.omegat.core.statistics.StatsResult;
+import org.omegat.core.statistics.writer.StatisticsTextWriter;
 import org.omegat.util.FileUtil;
 import org.omegat.util.Log;
 import org.omegat.util.RuntimePreferences;
@@ -44,20 +45,25 @@ import java.util.concurrent.Callable;
 public class StatsCommand implements Callable<Integer> {
 
     @CommandLine.ParentCommand
-    @Nullable LegacyParameters legacyParams;
+    @Nullable
+    LegacyParameters legacyParams;
 
     @CommandLine.Mixin
-    @Nullable CommonParameters params;
+    @Nullable
+    CommonParameters params;
 
     @CommandLine.Option(names = {
             "type" }, paramLabel = "<xml_or_text_or_json>", defaultValue = "xml", descriptionKey = "STATS_TYPE")
-    @Nullable String format;
+    @Nullable
+    String format;
     @CommandLine.Option(names = {
             "output" }, paramLabel = "<stats-output-file>", descriptionKey = "OUTPUT_FILE")
-    @Nullable String output;
+    @Nullable
+    String output;
 
     @CommandLine.Parameters(index = "0", paramLabel = "<project>", defaultValue = CommandLine.Option.NULL_VALUE)
-    @Nullable String project;
+    @Nullable
+    String project;
 
     @Override
     public Integer call() {
@@ -123,7 +129,7 @@ public class StatsCommand implements Callable<Integer> {
 
         if (output == null) {
             // no output file specified, print to console.
-            System.out.println(projectStats.getTextData());
+            System.out.println(new StatisticsTextWriter().getTextData(projectStats));
             p.closeProject();
             return 0;
         } else if (format == null) {

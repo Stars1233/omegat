@@ -35,10 +35,11 @@ import java.nio.file.Paths;
 
 import org.omegat.core.Core;
 import org.omegat.core.data.IProject;
+import org.omegat.core.statistics.dso.StatsResult;
+import org.omegat.core.statistics.writer.StatisticsTextWriter;
 import org.omegat.core.threads.Completion;
 import org.omegat.core.threads.CancellationToken;
 import org.omegat.util.OConsts;
-import org.omegat.util.OStrings;
 
 /**
  * Thread for calculate standard statistics.
@@ -74,14 +75,12 @@ public class CalcStandardStatistics implements ICalcStatistics {
     @Override
     public Void run(CancellationToken token) {
         cancellationToken = token;
-
         token.throwIfCancelled();
 
         StatsResult result = Statistics.buildProjectStats(project);
-        callback.setTable(StatsResult.HT_HEADERS, result.getHeaderTable());
-        String title = OStrings.getString("CT_STATS_FILE_Statistics");
-        callback.appendTable(title, StatsResult.FT_HEADERS, result.getFilesTable());
-        callback.setTextData(result.getTextData());
+        StatisticsTextWriter writer = new StatisticsTextWriter();
+        writer.write(result, callback);
+        writer.setData(result, callback);
         callback.onComplete(Completion.success());
 
         String internalDir = project.getProjectProperties().getProjectInternal();
@@ -95,5 +94,9 @@ public class CalcStandardStatistics implements ICalcStatistics {
         } catch (IOException ignored) {
         }
         return null;
+    }
+
+    public boolean isInterrupted() {
+        return cancellationToken.isCancelled();
     }
 }

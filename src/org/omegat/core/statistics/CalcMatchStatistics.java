@@ -29,6 +29,17 @@
 
 package org.omegat.core.statistics;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -50,9 +61,12 @@ import org.omegat.core.matching.LevenshteinDistance;
 import org.omegat.core.matching.NearString;
 import org.omegat.core.segmentation.Segmenter;
 import org.omegat.core.statistics.FindMatches.StoppedException;
+import org.omegat.core.statistics.dso.MatchStatCounts;
+import org.omegat.core.statistics.dso.StatCount;
 import org.omegat.core.threads.CancellationToken;
 import org.omegat.core.threads.LongProcessInterruptedException;
 import org.omegat.core.threads.Completion;
+import org.omegat.util.Log;
 import org.omegat.util.OConsts;
 import org.omegat.util.OStrings;
 import org.omegat.util.Token;
@@ -86,6 +100,7 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
             OStrings.getString("CT_STATSMATCH_RowMatch85"), OStrings.getString("CT_STATSMATCH_RowMatch75"),
             OStrings.getString("CT_STATSMATCH_RowMatch50"), OStrings.getString("CT_STATSMATCH_RowNoMatch"),
             OStrings.getString("CT_STATSMATCH_Total") };
+
     private final String[] rowsPerFile = new String[] {
             OStrings.getString("CT_STATSMATCH_RowRepetitionsWithinThisFile"),
             OStrings.getString("CT_STATSMATCH_RowRepetitionsFromOtherFiles"),
@@ -93,6 +108,7 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
             OStrings.getString("CT_STATSMATCH_RowMatch85"), OStrings.getString("CT_STATSMATCH_RowMatch75"),
             OStrings.getString("CT_STATSMATCH_RowMatch50"), OStrings.getString("CT_STATSMATCH_RowNoMatch"),
             OStrings.getString("CT_STATSMATCH_Total") };
+
     private final boolean[] align = new boolean[] { false, true, true, true, true };
 
     protected int entriesToProcess;
@@ -105,13 +121,22 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
     private final ThreadLocal<FindMatches> finder;
     private final StringBuilder textForLog = new StringBuilder();
 
+    /**
+     * Short date/time formatter for the statistics file header. Equivalent to
+     * the former {@code DateFormat.getInstance()} (short date and short time).
+     * {@link DateTimeFormatter} is immutable and thread-safe.
+     */
+    private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter
+            .ofLocalizedDateTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault());
+
     public CalcMatchStatistics(IStatsConsumer callback) {
         this(CoreState.getInstance().getProject(), Core.getSegmenter(), callback);
     }
 
     public CalcMatchStatistics(IProject project, Segmenter segmenter, IStatsConsumer callback) {
         super(project, callback);
-        finder = ThreadLocal.withInitial(() -> new FindMatches(project, segmenter, OConsts.MAX_NEAR_STRINGS, false, -1));
+        finder = ThreadLocal
+                .withInitial(() -> new FindMatches(project, segmenter, OConsts.MAX_NEAR_STRINGS, false, -1));
     }
 
     @Override
@@ -142,20 +167,44 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
         callback.setTextData(text);
     }
 
-    private void appendTable(String title, String[][] table) {
-        callback.appendTable(title, header, table);
-    }
-
-    private void showTable(String[][] table) {
-        callback.setTable(header, table);
-    }
-
     void showTextTable(String title, MatchStatCounts counts, IntPredicate filter, boolean perFile) {
         String[][] table = counts.calcTable(perFile ? rowsPerFile : rowsTotal, filter);
         String outText = TextUtil.showTextTable(header, table, align);
         appendText(title + "\n");
         appendText(outText + "\n");
-        appendTable(title, table);
+        callback.appendTable(title, header, table);
+    }
+
+    /**
+     * Writes the specified text to a file, along with the current date and
+     * time. If the target file's parent directories do not exist, they will be
+     * created. Any existing content in the file will be overwritten.
+     *
+     * @param filename
+     *            the name and path of the file to which the text will be
+     *            written
+     * @param text
+     *            the text content to write to the file
+     */
+    private void writeStat(String filename, String text) {
+        Path path = Paths.get(filename);
+        // Create parent directories if they don't exist
+        if (path.getParent() != null) {
+            try {
+                Files.createDirectories(path.getParent());
+            } catch (IOException e) {
+                Log.log(e);
+                return;
+            }
+        }
+
+        try (BufferedWriter writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            writer.write(TIMESTAMP_FORMAT.format(Instant.now()) + "\n");
+            writer.write(text);
+        } catch (Exception ex) {
+            Log.log(ex);
+        }
     }
 
     MatchStatCounts calcTotal(boolean outData) {
@@ -188,7 +237,7 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
             String[][] table = result.calcTableWithoutPercentage(rowsTotal);
             String outText = TextUtil.showTextTable(header, table, align);
             showText(outText);
-            showTable(table);
+            callback.setTable(header, table);
         }
 
         calcSimilarity(untranslatedEntries).ifPresent(result::addCounts);
@@ -197,9 +246,9 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
             String[][] table = result.calcTable(rowsTotal, i -> i != 1);
             String outText = TextUtil.showTextTable(header, table, align);
             showText(outText);
-            showTable(table);
+            callback.setTable(header, table);
             String fn = project.getProjectProperties().getProjectInternal() + OConsts.STATS_MATCH_FILENAME;
-            Statistics.writeStat(fn, outText);
+            writeStat(fn, outText);
             callback.setDataFile(fn);
         }
 
@@ -207,7 +256,7 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
     }
 
     void writeLog(String fn) {
-        Statistics.writeStat(fn, textForLog.toString());
+        writeStat(fn, textForLog.toString());
     }
 
     /**
@@ -227,7 +276,8 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
      */
     Optional<MatchStatCounts> calcSimilarity(List<SourceTextEntry> untranslatedEntries) {
         // If we have more than one available processor then we do the
-        // calculation in parallel unless explicitly disabled via system property.
+        // calculation in parallel unless explicitly disabled via system
+        // property.
         // Property: omegat.stats.parallel = true|false (default: true)
         boolean parallelAllowed = Boolean.parseBoolean(System.getProperty("omegat.stats.parallel", "true"));
         boolean doParallel = parallelAllowed && Runtime.getRuntime().availableProcessors() > 1;
@@ -271,10 +321,6 @@ public class CalcMatchStatistics extends CalcStandardStatistics implements ICalc
             }
         }
         return maxSimilarity;
-    }
-
-    public boolean isInterrupted() {
-        return cancellationToken.isCancelled();
     }
 
     String removeXmlTags(SourceTextEntry ste) {
