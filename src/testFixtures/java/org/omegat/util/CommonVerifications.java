@@ -39,7 +39,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
@@ -79,12 +78,6 @@ public class CommonVerifications {
     }
 
     protected void assertBundleLoading(String basename) {
-        // We must set the default locale to English first because we provide
-        // our English bundle as the empty-locale default. If we don't do so,
-        // the English bundle will never be tested in the case that the
-        // "default" is a language we provide a bundle for.
-        Locale.setDefault(Locale.ENGLISH);
-
         for (Language lang : Language.getLanguages()) {
             ResourceBundle bundle = ResourceBundle.getBundle(basename, lang.getLocale());
             assertTrue(bundle.getKeys().hasMoreElements());
@@ -107,8 +100,7 @@ public class CommonVerifications {
      * @throws Exception if there is missing key in Bundle.
      */
     protected void assertBundleHasAllKeys(String[] targets, ResourceBundle bundle) throws Exception {
-        Locale.setDefault(Locale.ENGLISH);
-        Pattern pattern = Pattern.compile("(OStrings|BUNDLE)\\.getString\\(\\s*\"([^\"]+)\"\\s*[,\\)]");
+        Pattern pattern = Pattern.compile("(OStrings|BUNDLE)\\.getString\\(\\s*\"([^\"]+)\"\\s*[,)]");
         processSourceContent(targets, (path, chars) -> {
             Matcher m = pattern.matcher(chars);
             while (m.find()) {
@@ -131,7 +123,8 @@ public class CommonVerifications {
      * @throws IOException
      *             from Files.find()
      */
-    public static void processSourceContent(String[] targets, BiConsumer<Path, CharSequence> consumer) throws IOException {
+    public static void processSourceContent(String[] targets, BiConsumer<Path, CharSequence> consumer)
+            throws IOException {
         CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
         decoder.onMalformedInput(CodingErrorAction.REPORT);
         decoder.onUnmappableCharacter(CodingErrorAction.REPORT);

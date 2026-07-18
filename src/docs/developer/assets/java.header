@@ -3,7 +3,7 @@
           with fuzzy matching, translation memory, keyword search,
           glossaries, and translation leveraging into updated projects.
 
- Copyright (C) 2011 Alex Buloichik
+ Copyright (C) 2008 Alex Buloichik
                Home page: https://www.omegat.org/
                Support center: https://omegat.org/support
 
@@ -22,23 +22,3 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  **************************************************************************/
-
-package org.omegat.filters;
-
-import org.junit.Test;
-import org.omegat.core.data.IProject;
-import org.omegat.filters3.xml.wix.WiXFilter;
-
-public class WiXFilterTest extends TestFilterBase {
-    @Test
-    public void testLoad() throws Exception {
-        String f = "src/test/resources/data/filters/Wix/fr-fr.wxl";
-        IProject.FileInfo fi = loadSourceFiles(new WiXFilter(), f);
-
-        checkMultiStart(fi, f);
-        checkMulti("1036", "LANG", null, null, null, null);
-        checkMulti("This installation requires XXX. Setup will now exit.", "XXXRequired", null, null, null,
-                null);
-        checkMultiEnd();
-    }
-}
