@@ -33,7 +33,6 @@ import javax.swing.JFrame;
 
 import com.vlsolutions.swing.docking.Dockable;
 import com.vlsolutions.swing.docking.DockingDesktop;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Interface for access to main window functionality.
@@ -69,7 +68,7 @@ public interface IMainWindow {
      * @param params
      *            message parameters for formatting
      */
-    void showStatusMessageRB(@Nullable String messageKey, Object... params);
+    void showStatusMessageRB(String messageKey, Object... params);
 
     /**
      * Same as {@link #showStatusMessageRB(String, Object...)} but this will
